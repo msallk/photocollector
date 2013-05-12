@@ -87,6 +87,7 @@ class CloudPolling(AdminControl):
             mime = 'image'
             description = 'Fetched From Cloud'
             name = url.split('/')[len(url.split('/'))-1]
+            #DETECT DUPLICATE
             flag = False;
             for i in images:
                 if(i.name == name):
