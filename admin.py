@@ -7,6 +7,12 @@ from google.appengine.ext.webapp import template
 from google.appengine.api import users
 import methods,logging
 from django.utils import simplejson
+
+import urllib
+import CloudFetch
+from models import Images
+
+
 class AdminControl(webapp.RequestHandler):
     def render(self,template_file,template_value):
         path=os.path.join(os.path.dirname(__file__),template_file)
@@ -59,6 +65,37 @@ class Admin_Upload2(AdminControl):
         dit["result"]="ok"
         dit["id"]=image.id
         return self.returnjson(dit)
+#TODO: 1. CHECK OF DUPLICATE, 2. ADD MULTIPLE BUTTONS?, 3. MODIFY UI, DELETE ABOUT....
+
+class CloudPolling(AdminControl):
+    def get(self):
+        collector = CloudFetch.CloudFetch()     
+        urllist = collector.getUrlList()
+        #url = 'http://www.technobuffalo.com/wp-content/uploads/2012/12/Google-Apps.jpeg'
+        #urllist = urllist.append(url)
+        images = Images.all()
+        for url in urllist:
+            bf = urllib.urlopen(url).read()
+            #bf=self.request.get("file")
+            if not bf:
+                return self.redirect('/')
+            #name=self.request.body_file.vars['file'].filename
+            #mime = self.request.body_file.vars['file'].headers['content-type']
+            #if mime.find('image')==-1:
+            #     return self.redirect('/admin/upload/')
+            #description=self.request.get("description")
+            mime = 'image'
+            description = 'Fetched From Cloud'
+            name = url.split('/')[len(url.split('/'))-1]
+            flag = False;
+            for i in images:
+                if(i.name == name):
+                    flag = True
+                    break
+            if(flag == True):
+                continue
+            image=methods.addImage( mime, description, bf, name)
+        self.redirect('/')
         
 class Delete_Image(AdminControl):
     @requires_admin
@@ -71,6 +108,7 @@ def main():
                                        [(r'/admin/upload/', Admin_Upload),
                                         (r'/admin/upload2/', Admin_Upload2),
                                         (r'/admin/del/(?P<key>[a-z,A-Z,0-9]+)', Delete_Image),
+                                        (r'/admin/cloudfetch/', CloudPolling)
                                        ], debug=True)
     wsgiref.handlers.CGIHandler().run(application)
 
